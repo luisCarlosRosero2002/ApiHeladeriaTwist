@@ -1,42 +1,54 @@
 const mysqlConnection = require('../database');
-const { isvalidToken } = require('../libs/authentication');
-const { secretJWT } = require('../keys');
+const {
+    isvalidToken
+} = require('../libs/authentication');
+const {
+    secretJWT
+} = require('../keys');
 const express = require('express');
 const router = express.Router();
 const jwt = require('jsonwebtoken');
 
 
 
-router.get('/login', isvalidToken ,async (req, res) => {
-    await mysqlConnection.query('SELECT * FROM usuarios', (err, rows, fields) => {
-        if (!err) {
-            res.json(rows);
-        } else {
-            console.log(err);
-        }
-    });
+// router.get('/login', isvalidToken ,async (req, res) => {
+//     await mysqlConnection.query('SELECT * FROM usuarios', (err, rows, fields) => {
+//         if (!err) {
+//             res.json(rows);
+//         } else {
+//             console.log(err);
+//         }
+//     });
 
-});
+// });
 
-router.post('/login' ,async (req, res) => {
-    const { usuario, password } = req.body;
-    await mysqlConnection.query('SELECT * FROM usuarios WHERE usuario =? AND password = ?',[usuario,password],
-        (err,rows,fields) => {
-            if(!err){
-                if(rows.length > 0){
+router.post('/login', async (req, res) => {
+    const {
+        usuario,
+        password
+    } = req.body;
+    await mysqlConnection.query('SELECT * FROM usuarios WHERE usuario =? AND password = ?', [usuario, password],
+        (err, rows, fields) => {
+            if (!err) {
+                if (rows.length > 0) {
+
                     const user = JSON.stringify(rows[0]);
                     const token = jwt.sign(user, secretJWT);
-                    res.status(200).json({token});
-                }else{
+                    res.status(200).json({
+                        token
+                    });
+                } else {
                     res.status(401).json('Usuario o clave incorrecto');
                 }
-            }else{
+            } else {
                 res.status(500).json(err.code);
-                console.log('Error consulta: '+ err.code);
+                console.log('Error consulta: ' + err.code);
             }
-    });
+        });
     // console.log(req.body);
 });
+
+
 
 // router.post('/login',async(req ,res) => {
 //     console.log(req.body);
@@ -76,31 +88,77 @@ router.post('/login' ,async (req, res) => {
 
 
 
-// // router.post('/logup', async (req ,res) => {
-// //     // passport.authenticated('local.logup',{
-// //     //     successRedirect: '/twist/perfil',
-// //     //     failureRedirect: '/twist/login',
-// //     //     failureFlash: true
-// //     // });
+router.post('/register', async (req, res) => {
+
+    const {
+        nombres,
+        apellidos,
+        fechaNac,
+        telefono,
+        correo,
+        direccion,
+        usuario,
+        password
+    } = req.body;
+    const addUser = {
+        usuario,
+        password
+    };
+    // await pool.query('INSERT INTO info_usuarios set ?', [nuevoUsuario]);
+
+    await mysqlConnection.query('INSERT INTO usuarios set ?', [addUser],
+        async (err, rows, fields) => {
+            if (!err) {
+
+                await mysqlConnection.query('SELECT * FROM usuarios WHERE usuario =? AND password = ?', [usuario, password],
+                    async (err, rows, fields) => {
+                        if (!err) {
+                            if (rows.length > 0) {
+                                console.log("Entrea a consultar");
+                                const nuevoUsuario = {
+                                    id_usuario: rows[0]['id'],
+                                    nombres,
+                                    apellidos,
+                                    fechaNac,
+                                    telefono,
+                                    correo,
+                                    direccion
+                                };
+
+                                await mysqlConnection.query('INSERT INTO info_usuarios set ?', [nuevoUsuario],
+                                    (err, rows, fields) => {
+                                        if (!err) {
+                                           
+                                            const user = JSON.stringify(rows[0]);
+                                            const token = jwt.sign(user, secretJWT);
+                                            res.status(200).json({
+                                                token
+                                            });
+                                           
+                                          
+                                        } else {
+                                            res.status(500).json(err.code);
+                                            console.log('Error consulta: ' + err.code);
+                                        }
+                                    });
+
+                            } else {
+                                res.status(401);
+                            }
+                        } else {
+                            res.status(500).json(err.code);
+                            console.log('Error consulta: ' + err.code);
+                        }
+                    })
 
 
-// //     console.log(req.body);
-// //     const { usuario,password,nombres,apellidos,fechaNac,telefono,correo } = req.body;
-// //     const nuevoUsuario = {
-// //         usuario,
-// //         password,
-// //         nombres,
-// //         apellidos,
-// //         fechaNac,
-// //         telefono,
-// //         correo
-// //     };
-// //     await pool.query('INSERT INTO usuarios set ?', [nuevoUsuario]);
-// //     req.flash('registroCorrecto','El usuario ha sido registrado satisfactorimente')
-// //     res.redirect('/twist/perfil');
-// //     // res.send("Registrado");
 
-// // });
+            } else {
+                res.status(500).json(err.code);
+                console.log('Error consulta: ' + err.code);
+            }
+        });
+});
 
 // router.get('/logout',isloLoggeedIn,(req, res, next) => {
 //     req.logout( (err) => {
