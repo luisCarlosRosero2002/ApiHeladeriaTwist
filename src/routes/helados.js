@@ -2,6 +2,9 @@ const express = require('express');
 const mysqlConnection = require('../database');
 const { isvalidToken } = require('../libs/authentication');
 const router = express.Router();
+const jwt = require('jsonwebtoken');
+const { secretJWT } = require('../keys');
+
 
 
 router.get('/productos', isvalidToken, async (req, res) => {
@@ -30,13 +33,17 @@ router.get('/productos', isvalidToken, async (req, res) => {
 // });
 
 router.get('/carrito', isvalidToken, async (req, res) => {
-
+    
+    let resFinal;
     const { id } = req.data;
+    console.log(id);
 
-    await mysqlConnection.query('SELECT * FROM carrito WHERE id = ?', [id],
-        (err, rows, fields) => {
-
+    await mysqlConnection.query('SELECT * FROM carrito WHERE id_usuario = ?', [id],
+        async (err, rows, fields) => {
             if (!err) {
+                resFinal = rows
+                console.log(resFinal);
+                // await mysqlConnection.query('SELECT ')
                 res.status(200).json(rows);
             } else {
                 console.log(err);
@@ -45,14 +52,38 @@ router.get('/carrito', isvalidToken, async (req, res) => {
 
 });
 
-router.post('/carrito', isvalidToken ,async (req, res) => {
+router.post('/carrito' ,isvalidToken, async (req, res) => {
 
-    const { id, } = req.data;
-    const newCarrito = req.body;
+    let subTotal ;
+    const { 
+        id_producto, 
+        cantidad
+    } = req.body;
 
-    console.log(newCarrito);
+    const { id } = req.data;
 
-    // await mysqlConnection.query('SELECT * FROM carrito WHERE id_usuario = ? AND id_producto = ?', [newCarrito],
+    await mysqlConnection.query("SELECT * FROM productos WHERE id = ?", id_producto,
+        async (err, rows, fields) => {
+            if (!err) {
+                subTotal = rows[0]['precioxUni'];
+                const addProduct = {id_producto, id_usuario:id, cantidad, subTotal}
+                await mysqlConnection.query('INSERT INTO carrito set ?', [addProduct],
+                    (err, rows, fields) => {
+                        if (!err) {
+                            res.status(200).json(rows);
+                        } else {
+                            console.log(err);
+                        }
+                    })
+            } else {
+                console.log(err);
+            }
+
+        })
+
+    // console.log(addProduct);
+    
+    // await mysqlConnection.query('INSERT INTO carrito set ?', [addProduct],
     //     (err, rows, fields) => {
 
     //         if (!err) {
