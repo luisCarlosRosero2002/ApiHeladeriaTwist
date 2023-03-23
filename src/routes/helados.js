@@ -34,15 +34,12 @@ router.get('/productos', isvalidToken, async (req, res) => {
 
 router.get('/carrito', isvalidToken, async (req, res) => {
     
-    let resFinal;
     const { id } = req.data;
     console.log(id);
 
-    await mysqlConnection.query('SELECT * FROM carrito WHERE id_usuario = ?', [id],
+    await mysqlConnection.query('SELECT * FROM carrito JOIN productos ON productos.id = carrito.id_producto WHERE id_usuario = ? ;', [id],
         async (err, rows, fields) => {
             if (!err) {
-                resFinal = rows
-                console.log(resFinal);
                 // await mysqlConnection.query('SELECT ')
                 res.status(200).json(rows);
             } else {
@@ -62,24 +59,65 @@ router.post('/carrito' ,isvalidToken, async (req, res) => {
 
     const { id } = req.data;
 
-    await mysqlConnection.query("SELECT * FROM productos WHERE id = ?", id_producto,
+    await mysqlConnection.query('SELECT * FROM carrito WHERE id_usuario = ? AND id_producto = ?',[id,id_producto],
         async (err, rows, fields) => {
-            if (!err) {
-                subTotal = rows[0]['precioxUni'];
-                const addProduct = {id_producto, id_usuario:id, cantidad, subTotal}
-                await mysqlConnection.query('INSERT INTO carrito set ?', [addProduct],
-                    (err, rows, fields) => {
-                        if (!err) {
-                            res.status(200).json(rows);
-                        } else {
-                            console.log(err);
-                        }
+            if(rows.length > 0){
+                await mysqlConnection.query('UPDATE carrito SET cantidad = cantidad + 1 WHERE id_producto = ? AND id_usuario = ?;',[id_producto,id],
+                (err, rows, fields) => {
+                    if(!err){
+                        res.status(200);
+                    }
+                    else{
+                        res.status(500);
+                    }
+                })
+            }else{
+                await mysqlConnection.query("SELECT * FROM productos WHERE id = ?", id_producto,
+                    async (err, rows, fields) => {
+                        subTotal = rows[0]['precioxUni'];
+                        const addProduct = {id_producto, id_usuario:id, cantidad, subTotal}
+                        await mysqlConnection.query('INSERT INTO carrito set ?', [addProduct],
+                            (err, rows, fields) => {
+                                if (!err) {
+                                    res.status(200);
+                                } else {
+                                    console.log(err);
+                                }
+                            })
                     })
-            } else {
-                console.log(err);
             }
-
         })
+    
+    // await mysqlConnection.query("SELECT * FROM productos WHERE id = ?", id_producto,
+    //     async (err, rows, fields) => {
+    //         if (!err) {
+    //             if(rows.length > 0){
+    //                 await mysqlConnection.query('UPDATE carrito SET cantidad = cantidad + 1 WHERE id_producto = ?',[id_producto],
+    //                     (err, rows, fields) => {
+    //                         if(!err){
+    //                             res.status(200);
+    //                         }
+    //                         else{
+    //                             res.status(500);
+    //                         }
+    //                     })
+    //             }else{
+    //                 subTotal = rows[0]['precioxUni'];
+    //                 const addProduct = {id_producto, id_usuario:id, cantidad, subTotal}
+    //                 await mysqlConnection.query('INSERT INTO carrito set ?', [addProduct],
+    //                     (err, rows, fields) => {
+    //                         if (!err) {
+    //                             res.status(200).json(rows);
+    //                         } else {
+    //                             console.log(err);
+    //                         }
+    //                     })
+    //             }
+    //         } else {
+    //             console.log(err);
+    //         }
+
+    //     })
 
     // console.log(addProduct);
     
